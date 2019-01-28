@@ -131,8 +131,10 @@ class DAISY_correction():
         def plane_function((Y,X),dy,dx,z0):
             return dy*Y+dx*X+z0
         
-        y,x=coords[:,0]-np.max(coords[:,0])/2.0,coords[:,1]-np.max(coords[:,1])/2.0
-        coords[:,3]+=np.median(coords[:,2]-coords[:,3])
+        coordstemp=coords.copy()
+        y,x=coordstemp[:,0]-np.max(coordstemp[:,0])/2.0,coordstemp[:,1]-np.max(coordstemp[:,1])/2.0
+        offsetinit=np.median(coordstemp[:,2]-coordstemp[:,3])
+        coordstemp[:,3]+=offsetinit
         
         limitesparam=[[-self.slopemax,self.slopemax],[-self.slopemax,self.slopemax],[-self.offsetmax,self.offsetmax]]
         absc=np.linspace(-1.0,1.0,self.sampling)
@@ -152,7 +154,7 @@ class DAISY_correction():
                 for l in np.arange(np.shape(absc)[0]):
                     for m in np.arange(np.shape(absc)[0]):
                         zplan=plane_function((y,x),slopeY[k],slopeX[l],offsetZ[m])
-                        errors[k,l,m]=np.median(np.abs(coords[:,2]-coords[:,3]-zplan))
+                        errors[k,l,m]=np.median(np.abs(coordstemp[:,2]-coordstemp[:,3]-zplan))
             Parallel(n_jobs=self.NUM_CORES,backend="threading")(delayed(do_k)(i) for i in np.arange(np.shape(absc)[0]));
             
             errors=scipy.ndimage.filters.gaussian_filter(errors,1.0)
@@ -162,6 +164,8 @@ class DAISY_correction():
             
             spacingparam=[slopeY[1]-slopeY[0],slopeX[1]-slopeX[0],offsetZ[1]-offsetZ[0]]
             limitesparam=[[parammin[0]-2.0*spacingparam[0],parammin[0]+2.0*spacingparam[0]],[parammin[1]-2.0*spacingparam[1],parammin[1]+2.0*spacingparam[1]],[parammin[2]-2.0*spacingparam[2],parammin[2]+2.0*spacingparam[2]]]
+            
+            parammin=[parammin[0],parammin[1],parammin[2]+offsetinit]
                 
             print '    Optimal parameters:'
             print '        '+'Slope  Y: '+str(parammin[0]*1000.0)[:5]+' .10^-3'
